@@ -43,7 +43,7 @@ body {
 
 .bbf__tabs {
   display: flex;
-  gap: 2px;
+  gap: 6px;
   flex: 1;
 }
 
