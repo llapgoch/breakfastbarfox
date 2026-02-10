@@ -176,6 +176,8 @@
     var expanded = localStorage.getItem("bbf-expanded-all") === "1";
     if (expanded) {
       expandAll(container);
+    } else {
+      collapseAll(container);
     }
     updateExpandLabel(container, expanded);
 
