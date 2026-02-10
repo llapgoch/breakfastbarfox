@@ -1,6 +1,6 @@
 browser.devtools.panels.create(
   "Breakfast Bar",
-  "",
+  "/icons/icon.svg",
   "/panel/panel.html"
 ).then(function (panel) {
   panel.onShown.addListener(function (panelWindow) {
