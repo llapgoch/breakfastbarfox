@@ -166,12 +166,15 @@ body {
    ============================================= */
 
 .bbf__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 6px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .bbf__search-input {
-  width: 100%;
+  flex: 1;
   padding: 4px 8px;
   font-size: 11px;
   font-family: inherit;
@@ -188,6 +191,26 @@ body {
 
 .bbf__search-input::placeholder {
   color: #6b7280;
+}
+
+.bbf__expand-toggle {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 500;
+  font-family: inherit;
+  color: #c9d1d9;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.bbf__expand-toggle:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
 }
 
 /* =============================================

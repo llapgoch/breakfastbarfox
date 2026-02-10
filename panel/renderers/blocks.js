@@ -100,6 +100,11 @@
     input.placeholder = "Filter " + filterName + "...";
     input.dataset.filter = filterName;
     wrapper.appendChild(input);
+
+    var expandBtn = el("button", "bbf__expand-toggle", "Expand All");
+    expandBtn.dataset.action = "expand-toggle";
+    wrapper.appendChild(expandBtn);
+
     return input;
   }
 
@@ -166,7 +171,44 @@
 
     container.textContent = "";
     container.appendChild(fragment);
+
+    // Restore expand/collapse state from localStorage
+    var expanded = localStorage.getItem("bbf-expanded-all") === "1";
+    if (expanded) {
+      expandAll(container);
+    }
+    updateExpandLabel(container, expanded);
+
     bindEvents(container);
+  }
+
+  function expandAll(container) {
+    var children = container.querySelectorAll(".bbf-tree__children");
+    var toggles = container.querySelectorAll("[data-action='toggle']");
+    for (var i = 0; i < children.length; i++) {
+      children[i].classList.remove("is-collapsed");
+    }
+    for (var i = 0; i < toggles.length; i++) {
+      toggles[i].textContent = "\u25BC";
+    }
+  }
+
+  function collapseAll(container) {
+    var children = container.querySelectorAll(".bbf-tree__children");
+    var toggles = container.querySelectorAll("[data-action='toggle']");
+    for (var i = 0; i < children.length; i++) {
+      children[i].classList.add("is-collapsed");
+    }
+    for (var i = 0; i < toggles.length; i++) {
+      toggles[i].textContent = "\u25B6";
+    }
+  }
+
+  function updateExpandLabel(container, expanded) {
+    var btn = container.querySelector("[data-action='expand-toggle']");
+    if (btn) {
+      btn.textContent = expanded ? "Collapse All" : "Expand All";
+    }
   }
 
   function bindEvents(container) {
@@ -178,7 +220,22 @@
     container._bbfClickHandler = function (e) {
       var target = e.target;
 
-      // Toggle expand/collapse
+      // Expand/Collapse All
+      if (target.closest("[data-action='expand-toggle']")) {
+        var expanded = localStorage.getItem("bbf-expanded-all") === "1";
+        if (expanded) {
+          collapseAll(container);
+          localStorage.setItem("bbf-expanded-all", "0");
+        } else {
+          expandAll(container);
+          localStorage.setItem("bbf-expanded-all", "1");
+        }
+        updateExpandLabel(container, !expanded);
+        e.stopPropagation();
+        return;
+      }
+
+      // Toggle expand/collapse individual node
       if (target.closest("[data-action='toggle']")) {
         var btn = target.closest("[data-action='toggle']");
         var item = btn.closest(".bbf-tree__item");
