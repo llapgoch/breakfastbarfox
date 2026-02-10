@@ -4,20 +4,28 @@
   window.BBF = window.BBF || {};
   window.BBF.renderers = window.BBF.renderers || {};
 
-  function escapeHtml(str) {
-    if (!str) return "";
-    var div = document.createElement("div");
-    div.appendChild(document.createTextNode(String(str)));
-    return div.innerHTML;
+  function el(tag, className, textContent) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (textContent !== undefined) node.textContent = textContent;
+    return node;
   }
 
-  function renderTree(nodes, depth) {
-    if (!nodes || typeof nodes !== "object") return "";
+  function truncate(str, len) {
+    if (!str) return "";
+    if (str.length <= len) return str;
+    return str.substring(0, len) + "\u2026";
+  }
+
+  // --- Tree building with DOM APIs ---
+  function buildTree(nodes, depth) {
+    if (!nodes || typeof nodes !== "object") return null;
 
     var keys = Object.keys(nodes);
-    if (!keys.length) return "";
+    if (!keys.length) return null;
 
-    var html = '<ul class="bbf-tree" data-depth="' + depth + '">';
+    var ul = el("ul", "bbf-tree");
+    ul.dataset.depth = depth;
 
     for (var i = 0; i < keys.length; i++) {
       var name = keys[i];
@@ -25,46 +33,57 @@
       var hasChildren = node.children && Object.keys(node.children).length > 0;
       var cssName = name.replace(/\./g, "-");
 
-      html += '<li class="bbf-tree__item">';
-      html += '<div class="bbf-tree__row" data-block-name="' + escapeHtml(name) + '">';
+      var li = el("li", "bbf-tree__item");
+
+      // Row
+      var row = el("div", "bbf-tree__row");
+      row.dataset.blockName = name;
 
       // Toggle arrow
       if (hasChildren) {
-        html += '<button class="bbf-tree__toggle" data-action="toggle">&#x25BC;</button>';
+        var toggle = el("button", "bbf-tree__toggle", "\u25BC");
+        toggle.dataset.action = "toggle";
+        row.appendChild(toggle);
       } else {
-        html += '<span class="bbf-tree__toggle bbf-tree__toggle--spacer"></span>';
+        row.appendChild(el("span", "bbf-tree__toggle bbf-tree__toggle--spacer"));
       }
 
       // Name
-      html += '<span class="bbf-tree__name">' + escapeHtml(name) + '</span>';
+      row.appendChild(el("span", "bbf-tree__name", name));
 
       // Extras
       var extras = getExtras(node);
       if (extras.length) {
-        html += '<span class="bbf-tree__extras">';
+        var extrasSpan = el("span", "bbf-tree__extras");
         for (var j = 0; j < extras.length; j++) {
-          html += '<span class="bbf-tree__extra bbf-tree__extra--' + extras[j].key + '">' + escapeHtml(extras[j].value) + '</span>';
+          extrasSpan.appendChild(
+            el("span", "bbf-tree__extra bbf-tree__extra--" + extras[j].key, extras[j].value)
+          );
         }
-        html += '</span>';
+        row.appendChild(extrasSpan);
       }
 
       // Highlight button
-      html += '<button class="bbf-tree__highlight" data-action="highlight" data-layout-name="' + escapeHtml(cssName) + '">Highlight</button>';
+      var hlBtn = el("button", "bbf-tree__highlight", "Highlight");
+      hlBtn.dataset.action = "highlight";
+      hlBtn.dataset.layoutName = cssName;
+      row.appendChild(hlBtn);
 
-      html += '</div>';
+      li.appendChild(row);
 
       // Children
       if (hasChildren) {
-        html += '<div class="bbf-tree__children" data-depth="' + (depth + 1) + '">';
-        html += renderTree(node.children, depth + 1);
-        html += '</div>';
+        var childrenDiv = el("div", "bbf-tree__children");
+        childrenDiv.dataset.depth = depth + 1;
+        var childTree = buildTree(node.children, depth + 1);
+        if (childTree) childrenDiv.appendChild(childTree);
+        li.appendChild(childrenDiv);
       }
 
-      html += '</li>';
+      ul.appendChild(li);
     }
 
-    html += '</ul>';
-    return html;
+    return ul;
   }
 
   function getExtras(node) {
@@ -77,36 +96,70 @@
     return extras;
   }
 
+  function buildSearchBar(filterName) {
+    var wrapper = el("div", "bbf__search");
+    var input = el("input", "bbf__search-input");
+    input.type = "text";
+    input.placeholder = "Filter " + filterName + "...";
+    input.dataset.filter = filterName;
+    wrapper.appendChild(input);
+    return input;
+  }
+
   function render(container, data) {
+    var fragment = document.createDocumentFragment();
+
     if (!data) {
-      container.innerHTML = '<div class="bbf__empty">No block data found. Is the BreakfastBar module installed?</div>';
+      fragment.appendChild(el("div", "bbf__empty", "No block data found. Is the BreakfastBar module installed?"));
+      container.textContent = "";
+      container.appendChild(fragment);
       return;
     }
 
     // Handle flat comment-only fallback
     if (data._commentBlocks) {
-      var html = '<div class="bbf__search"><input type="text" class="bbf__search-input" placeholder="Filter blocks..." data-filter="blocks"></div>';
-      html += '<ul class="bbf-tree" data-depth="0">';
+      var searchInput = buildSearchBar("blocks");
+      fragment.appendChild(searchInput.parentNode);
+
+      var ul = el("ul", "bbf-tree");
+      ul.dataset.depth = "0";
+
       for (var i = 0; i < data._commentBlocks.length; i++) {
         var name = data._commentBlocks[i];
         var cssName = name.replace(/\./g, "-");
-        html += '<li class="bbf-tree__item">';
-        html += '<div class="bbf-tree__row" data-block-name="' + escapeHtml(name) + '">';
-        html += '<span class="bbf-tree__toggle bbf-tree__toggle--spacer"></span>';
-        html += '<span class="bbf-tree__name">' + escapeHtml(name) + '</span>';
-        html += '<button class="bbf-tree__highlight" data-action="highlight" data-layout-name="' + escapeHtml(cssName) + '">Highlight</button>';
-        html += '</div></li>';
+
+        var li = el("li", "bbf-tree__item");
+        var row = el("div", "bbf-tree__row");
+        row.dataset.blockName = name;
+
+        row.appendChild(el("span", "bbf-tree__toggle bbf-tree__toggle--spacer"));
+        row.appendChild(el("span", "bbf-tree__name", name));
+
+        var hlBtn = el("button", "bbf-tree__highlight", "Highlight");
+        hlBtn.dataset.action = "highlight";
+        hlBtn.dataset.layoutName = cssName;
+        row.appendChild(hlBtn);
+
+        li.appendChild(row);
+        ul.appendChild(li);
       }
-      html += '</ul>';
-      container.innerHTML = html;
+
+      fragment.appendChild(ul);
+      container.textContent = "";
+      container.appendChild(fragment);
       bindEvents(container);
       return;
     }
 
     // Full tree data from DataInjector
-    var html = '<div class="bbf__search"><input type="text" class="bbf__search-input" placeholder="Filter blocks..." data-filter="blocks"></div>';
-    html += renderTree(data, 0);
-    container.innerHTML = html;
+    var searchInput = buildSearchBar("blocks");
+    fragment.appendChild(searchInput.parentNode);
+
+    var tree = buildTree(data, 0);
+    if (tree) fragment.appendChild(tree);
+
+    container.textContent = "";
+    container.appendChild(fragment);
     bindEvents(container);
   }
 
@@ -117,11 +170,11 @@
       // Toggle expand/collapse
       if (target.closest("[data-action='toggle']")) {
         var btn = target.closest("[data-action='toggle']");
-        var row = btn.closest(".bbf-tree__item");
-        var children = row.querySelector(".bbf-tree__children");
+        var item = btn.closest(".bbf-tree__item");
+        var children = item.querySelector(".bbf-tree__children");
         if (children) {
           var collapsed = children.classList.toggle("is-collapsed");
-          btn.innerHTML = collapsed ? "&#x25B6;" : "&#x25BC;";
+          btn.textContent = collapsed ? "\u25B6" : "\u25BC";
         }
         e.stopPropagation();
         return;
@@ -162,14 +215,10 @@
         var query = this.value.toLowerCase();
         var items = container.querySelectorAll(".bbf-tree__item");
         for (var i = 0; i < items.length; i++) {
-          var name = items[i].querySelector(".bbf-tree__name");
-          if (!name) continue;
-          var text = name.textContent.toLowerCase();
-          if (!query || text.indexOf(query) !== -1) {
-            items[i].style.display = "";
-          } else {
-            items[i].style.display = "none";
-          }
+          var nameEl = items[i].querySelector(".bbf-tree__name");
+          if (!nameEl) continue;
+          var text = nameEl.textContent.toLowerCase();
+          items[i].style.display = (!query || text.indexOf(query) !== -1) ? "" : "none";
         }
       });
     }

@@ -5,6 +5,20 @@
   var activeTab = localStorage.getItem("bbf-active-tab") || "blocks";
   var currentHighlightedBlock = null;
 
+  // --- DOM helpers ---
+  function el(tag, className, textContent) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (textContent !== undefined) node.textContent = textContent;
+    return node;
+  }
+
+  function clearContainer(container) {
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
+  }
+
   // --- Port connection ---
   function connectPort() {
     port = browser.runtime.connect({ name: "breakfastbar-panel" });
@@ -110,7 +124,8 @@
   function showError(message) {
     var activePanel = document.querySelector(".bbf__panel.is-active");
     if (activePanel) {
-      activePanel.innerHTML = '<div class="bbf__error">' + escapeHtml(message) + '</div>';
+      clearContainer(activePanel);
+      activePanel.appendChild(el("div", "bbf__error", message));
     }
   }
 
@@ -143,13 +158,9 @@
     });
   }
 
-  // --- Utilities ---
-  function escapeHtml(str) {
-    var div = document.createElement("div");
-    div.appendChild(document.createTextNode(str));
-    return div.innerHTML;
-  }
-  window.BBF.escapeHtml = escapeHtml;
+  // --- Shared utilities ---
+  window.BBF.el = el;
+  window.BBF.clearContainer = clearContainer;
 
   // --- Init ---
   connectPort();

@@ -4,11 +4,11 @@
   window.BBF = window.BBF || {};
   window.BBF.renderers = window.BBF.renderers || {};
 
-  function escapeHtml(str) {
-    if (!str) return "";
-    var div = document.createElement("div");
-    div.appendChild(document.createTextNode(String(str)));
-    return div.innerHTML;
+  function el(tag, className, textContent) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (textContent !== undefined) node.textContent = textContent;
+    return node;
   }
 
   function truncate(str, len) {
@@ -17,75 +17,98 @@
     return str.substring(0, len) + "\u2026";
   }
 
+  // --- Section builder ---
+  function buildSection(title, count, collapsed, buildBodyFn) {
+    var section = el("div", "bbf-js__section");
+
+    var header = el("div", "bbf-js__section-header");
+    header.dataset.action = "toggle-section";
+
+    var arrow = el("span", "bbf-js__arrow", collapsed ? "\u25B6" : "\u25BC");
+    header.appendChild(arrow);
+    header.appendChild(document.createTextNode(" " + title + " "));
+    header.appendChild(el("span", "bbf-js__count", String(count)));
+    section.appendChild(header);
+
+    var body = el("div", "bbf-js__section-body");
+    if (collapsed) body.classList.add("is-collapsed");
+    buildBodyFn(body);
+    section.appendChild(body);
+
+    return section;
+  }
+
+  // --- Expandable item with pre block ---
+  function buildExpandableItem(name, detail, expandedText) {
+    var item = el("div", "bbf-js__item bbf-js__item--expandable");
+    item.dataset.action = "expand";
+
+    item.appendChild(el("span", "bbf-js__item-name", name));
+    if (detail) item.appendChild(el("span", "bbf-js__item-detail", detail));
+
+    if (expandedText) {
+      var expanded = el("div", "bbf-js__item-expanded");
+      expanded.appendChild(el("pre", "bbf-js__pre", expandedText));
+      item.appendChild(expanded);
+    }
+
+    return item;
+  }
+
   function render(container, data) {
+    var fragment = document.createDocumentFragment();
+
     if (!data || !data.available) {
-      container.innerHTML = '<div class="bbf__empty">No Alpine.js found on this page.</div>';
+      fragment.appendChild(el("div", "bbf__empty", "No Alpine.js found on this page."));
+      container.textContent = "";
+      container.appendChild(fragment);
       return;
     }
 
-    var html = "";
+    var hasContent = false;
 
     // Version badge
     if (data.version) {
-      html += '<div class="bbf-js__badge">Alpine.js v' + escapeHtml(data.version) + '</div>';
+      hasContent = true;
+      fragment.appendChild(el("div", "bbf-js__badge", "Alpine.js v" + data.version));
     }
 
     // Components
     if (data.components && data.components.length) {
-      html += '<div class="bbf-js__section">';
-      html += '<div class="bbf-js__section-header" data-action="toggle-section">';
-      html += '<span class="bbf-js__arrow">\u25BC</span> ';
-      html += 'Components <span class="bbf-js__count">' + data.components.length + '</span>';
-      html += '</div>';
-      html += '<div class="bbf-js__section-body">';
-
-      for (var i = 0; i < data.components.length; i++) {
-        var comp = data.components[i];
-        html += '<div class="bbf-js__item bbf-js__item--expandable" data-action="expand">';
-        html += '<span class="bbf-js__item-name">' + escapeHtml(comp.label) + '</span>';
-        if (comp.xData) {
-          html += '<span class="bbf-js__item-detail">' + escapeHtml(truncate(comp.xData, 80)) + '</span>';
+      hasContent = true;
+      fragment.appendChild(buildSection("Components", data.components.length, false, function (body) {
+        for (var i = 0; i < data.components.length; i++) {
+          var comp = data.components[i];
+          body.appendChild(buildExpandableItem(
+            comp.label,
+            comp.xData ? truncate(comp.xData, 80) : null,
+            comp.liveData
+          ));
         }
-        if (comp.liveData) {
-          html += '<div class="bbf-js__item-expanded">';
-          html += '<pre class="bbf-js__pre">' + escapeHtml(comp.liveData) + '</pre>';
-          html += '</div>';
-        }
-        html += '</div>';
-      }
-
-      html += '</div></div>';
+      }));
     }
 
     // Stores
     if (data.stores && Object.keys(data.stores).length) {
+      hasContent = true;
       var storeKeys = Object.keys(data.stores);
-      html += '<div class="bbf-js__section">';
-      html += '<div class="bbf-js__section-header" data-action="toggle-section">';
-      html += '<span class="bbf-js__arrow">\u25BC</span> ';
-      html += 'Stores <span class="bbf-js__count">' + storeKeys.length + '</span>';
-      html += '</div>';
-      html += '<div class="bbf-js__section-body">';
-
-      for (var j = 0; j < storeKeys.length; j++) {
-        var storeName = storeKeys[j];
-        html += '<div class="bbf-js__item bbf-js__item--expandable" data-action="expand">';
-        html += '<span class="bbf-js__item-name">' + escapeHtml(storeName) + '</span>';
-        html += '<span class="bbf-js__item-detail">store</span>';
-        html += '<div class="bbf-js__item-expanded">';
-        html += '<pre class="bbf-js__pre">' + escapeHtml(data.stores[storeName]) + '</pre>';
-        html += '</div>';
-        html += '</div>';
-      }
-
-      html += '</div></div>';
+      fragment.appendChild(buildSection("Stores", storeKeys.length, false, function (body) {
+        for (var i = 0; i < storeKeys.length; i++) {
+          body.appendChild(buildExpandableItem(
+            storeKeys[i],
+            "store",
+            data.stores[storeKeys[i]]
+          ));
+        }
+      }));
     }
 
-    if (!html) {
-      html = '<div class="bbf__empty">Alpine.js detected but no component data found.</div>';
+    if (!hasContent) {
+      fragment.appendChild(el("div", "bbf__empty", "Alpine.js detected but no component data found."));
     }
 
-    container.innerHTML = html;
+    container.textContent = "";
+    container.appendChild(fragment);
     bindEvents(container);
   }
 

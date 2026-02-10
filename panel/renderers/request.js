@@ -4,33 +4,37 @@
   window.BBF = window.BBF || {};
   window.BBF.renderers = window.BBF.renderers || {};
 
-  function escapeHtml(str) {
-    if (!str && str !== 0) return "";
-    var div = document.createElement("div");
-    div.appendChild(document.createTextNode(String(str)));
-    return div.innerHTML;
+  function el(tag, className, textContent) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (textContent !== undefined) node.textContent = textContent;
+    return node;
   }
 
   function render(container, data) {
+    var fragment = document.createDocumentFragment();
+
     if (!data || typeof data !== "object" || !Object.keys(data).length) {
-      container.innerHTML = '<div class="bbf__empty">No request info found.</div>';
+      fragment.appendChild(el("div", "bbf__empty", "No request info found."));
+      container.textContent = "";
+      container.appendChild(fragment);
       return;
     }
 
-    var html = '<div class="bbf-kv__list">';
+    var list = el("div", "bbf-kv__list");
     var keys = Object.keys(data);
 
     for (var i = 0; i < keys.length; i++) {
-      var label = keys[i];
-      var value = data[label];
-      html += '<div class="bbf-kv__row">';
-      html += '<span class="bbf-kv__label">' + escapeHtml(label) + '</span>';
-      html += '<span class="bbf-kv__value">' + escapeHtml(value) + '</span>';
-      html += '</div>';
+      var row = el("div", "bbf-kv__row");
+      row.appendChild(el("span", "bbf-kv__label", keys[i]));
+      row.appendChild(el("span", "bbf-kv__value", String(data[keys[i]])));
+      list.appendChild(row);
     }
 
-    html += '</div>';
-    container.innerHTML = html;
+    fragment.appendChild(list);
+
+    container.textContent = "";
+    container.appendChild(fragment);
   }
 
   window.BBF.renderers.request = { render: render };
