@@ -4,13 +4,58 @@
   function scan() {
     var result = {
       lumajs: scanLuma(),
-      alpine: scanAlpine()
+      alpine: scanAlpine(),
+      overlayBlocks: scanOverlayBlocks()
     };
 
     window.postMessage({
       type: "bbf-page-scan-result",
       data: result
     }, "*");
+  }
+
+  // --- Overlay availability scanner ---
+  // Mirrors _markApplicableToggles / hasBlockOverlay from the toolbar widget.
+  // Scans DOM comment markers to build a list of block names (dash-format)
+  // that have both start and end markers.
+  function scanOverlayBlocks() {
+    var startNames = {};
+    var endNames = {};
+    var walker = document.createTreeWalker(
+      document.documentElement,
+      NodeFilter.SHOW_COMMENT,
+      null,
+      false
+    );
+
+    var node;
+    while (node = walker.nextNode()) {
+      var val = node.nodeValue.trim();
+      if (val.indexOf("developer-toolbar-dom-marker") === -1) continue;
+
+      var idx = val.indexOf("-start-viewer");
+      if (idx !== -1) {
+        var name = val.substring(0, idx).replace("developer-toolbar-dom-marker", "").trim();
+        if (name) startNames[name] = true;
+        continue;
+      }
+
+      idx = val.indexOf("-end-viewer");
+      if (idx !== -1) {
+        var name = val.substring(0, idx).replace("developer-toolbar-dom-marker", "").trim();
+        if (name) endNames[name] = true;
+      }
+    }
+
+    // Only include blocks that have BOTH start and end markers
+    var available = [];
+    for (var name in startNames) {
+      if (startNames.hasOwnProperty(name) && endNames[name]) {
+        available.push(name);
+      }
+    }
+
+    return available;
   }
 
   // --- Luma / RequireJS scanner ---

@@ -105,7 +105,8 @@
       if (data.blocks !== undefined) {
         window.BBF.renderers.blocks.render(
           document.getElementById("panel-blocks"),
-          data.blocks
+          data.blocks,
+          data.overlayBlocks || []
         );
       }
       if (data.handles !== undefined) {

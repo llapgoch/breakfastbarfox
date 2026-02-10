@@ -11,24 +11,8 @@
     return node;
   }
 
-  function countNodes(nodes) {
-    if (!nodes || typeof nodes !== "object") return 0;
-    var keys = Object.keys(nodes);
-    var count = keys.length;
-    for (var i = 0; i < keys.length; i++) {
-      if (nodes[keys[i]].children) count += countNodes(nodes[keys[i]].children);
-    }
-    return count;
-  }
-
-  function truncate(str, len) {
-    if (!str) return "";
-    if (str.length <= len) return str;
-    return str.substring(0, len) + "\u2026";
-  }
-
   // --- Tree building with DOM APIs ---
-  function buildTree(nodes, depth) {
+  function buildTree(nodes, depth, overlaySet) {
     if (!nodes || typeof nodes !== "object") return null;
 
     var keys = Object.keys(nodes);
@@ -42,6 +26,7 @@
       var node = nodes[name];
       var hasChildren = node.children && Object.keys(node.children).length > 0;
       var cssName = name.replace(/\./g, "-");
+      var hasOverlay = overlaySet && overlaySet[cssName];
 
       var li = el("li", "bbf-tree__item");
 
@@ -73,11 +58,13 @@
         row.appendChild(extrasSpan);
       }
 
-      // Highlight button
-      var hlBtn = el("button", "bbf-tree__highlight", "Highlight");
-      hlBtn.dataset.action = "highlight";
-      hlBtn.dataset.layoutName = cssName;
-      row.appendChild(hlBtn);
+      // Highlight button — only shown for blocks with DOM comment markers
+      if (hasOverlay) {
+        var hlBtn = el("button", "bbf-tree__highlight", "Highlight");
+        hlBtn.dataset.action = "highlight";
+        hlBtn.dataset.layoutName = cssName;
+        row.appendChild(hlBtn);
+      }
 
       li.appendChild(row);
 
@@ -85,7 +72,7 @@
       if (hasChildren) {
         var childrenDiv = el("div", "bbf-tree__children");
         childrenDiv.dataset.depth = depth + 1;
-        var childTree = buildTree(node.children, depth + 1);
+        var childTree = buildTree(node.children, depth + 1, overlaySet);
         if (childTree) childrenDiv.appendChild(childTree);
         li.appendChild(childrenDiv);
       }
@@ -116,8 +103,16 @@
     return input;
   }
 
-  function render(container, data) {
+  function render(container, data, overlayBlocks) {
     var fragment = document.createDocumentFragment();
+
+    // Build a lookup object from the overlayBlocks array (dash-format names)
+    var overlaySet = {};
+    if (overlayBlocks && overlayBlocks.length) {
+      for (var n = 0; n < overlayBlocks.length; n++) {
+        overlaySet[overlayBlocks[n]] = true;
+      }
+    }
 
     if (!data) {
       fragment.appendChild(el("div", "bbf__empty", "No block data found. Is the BreakfastBar module installed?"));
@@ -145,6 +140,7 @@
         row.appendChild(el("span", "bbf-tree__toggle bbf-tree__toggle--spacer"));
         row.appendChild(el("span", "bbf-tree__name", name));
 
+        // Comment-only fallback: all blocks came from markers, so all have bounds
         var hlBtn = el("button", "bbf-tree__highlight", "Highlight");
         hlBtn.dataset.action = "highlight";
         hlBtn.dataset.layoutName = cssName;
@@ -162,22 +158,10 @@
     }
 
     // Full tree data from DataInjector
-    var topKeys = Object.keys(data);
-    var totalCount = countNodes(data);
-    console.log("[BBF Blocks] Top-level keys:", topKeys);
-    console.log("[BBF Blocks] Total node count:", totalCount);
-
-    // Debug: show counts
-    var debugInfo = el("div", "bbf__debug",
-      "Top-level: " + topKeys.join(", ") + " | Total nodes: " + totalCount
-    );
-    debugInfo.style.cssText = "padding: 4px 8px; font-size: 11px; color: #8b949e; border-bottom: 1px solid #333;";
-    fragment.appendChild(debugInfo);
-
     var searchInput = buildSearchBar("blocks");
     fragment.appendChild(searchInput.parentNode);
 
-    var tree = buildTree(data, 0);
+    var tree = buildTree(data, 0, overlaySet);
     if (tree) fragment.appendChild(tree);
 
     container.textContent = "";

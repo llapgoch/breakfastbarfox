@@ -34,6 +34,7 @@
           request: serverData.request || null,
           lumajs: pageData.lumajs || null,
           alpine: pageData.alpine || null,
+          overlayBlocks: pageData.overlayBlocks || [],
           _source: serverData._source || "unknown",
           _reason: serverData._reason || null,
           _markerCount: serverData._markerCount || 0
