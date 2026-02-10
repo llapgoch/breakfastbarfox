@@ -59,6 +59,14 @@
     });
   }
 
+  function setTabVisible(panelName, visible) {
+    tabs.forEach(function (t) {
+      if (t.dataset.panel === panelName) {
+        t.style.display = visible ? "" : "none";
+      }
+    });
+  }
+
   tabs.forEach(function (tab) {
     tab.addEventListener("click", function () {
       switchTab(tab.dataset.panel);
@@ -134,6 +142,19 @@
           document.getElementById("panel-alpine"),
           data.alpine
         );
+      }
+
+      // Show/hide Luma JS and Alpine tabs based on environment detection.
+      // Mirrors the toolbar's devbar--hyva / devbar--luma CSS approach.
+      var lumaAvailable = data.lumajs && data.lumajs.available;
+      var alpineAvailable = data.alpine && data.alpine.available;
+      setTabVisible("lumajs", lumaAvailable);
+      setTabVisible("alpine", alpineAvailable);
+
+      // If the active tab was just hidden, fall back to "blocks"
+      if ((activeTab === "lumajs" && !lumaAvailable) ||
+          (activeTab === "alpine" && !alpineAvailable)) {
+        switchTab("blocks");
       }
     }
 
