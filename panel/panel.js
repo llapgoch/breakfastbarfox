@@ -4,6 +4,7 @@
   var port = null;
   var activeTab = localStorage.getItem("bbf-active-tab") || "blocks";
   var currentHighlightedBlock = null;
+  var hasScanned = false;
 
   // --- DOM helpers ---
   function el(tag, className, textContent) {
@@ -21,21 +22,26 @@
 
   // --- Port connection ---
   function connectPort() {
-    port = browser.runtime.connect({ name: "breakfastbar-panel" });
-    port.postMessage({ type: "init", tabId: browser.devtools.inspectedWindow.tabId });
+    try {
+      port = browser.runtime.connect({ name: "breakfastbar-panel" });
+      port.postMessage({ type: "init", tabId: browser.devtools.inspectedWindow.tabId });
 
-    port.onMessage.addListener(function (msg) {
-      if (msg.type === "error") {
-        showError(msg.error);
-        setLoading(false);
-        return;
-      }
-      handleResponse(msg);
-    });
+      port.onMessage.addListener(function (msg) {
+        if (msg.type === "error") {
+          showError(msg.error);
+          setLoading(false);
+          return;
+        }
+        handleResponse(msg);
+      });
 
-    port.onDisconnect.addListener(function () {
-      port = null;
-    });
+      port.onDisconnect.addListener(function () {
+        port = null;
+      });
+    } catch (err) {
+      console.error("Breakfast Bar: connectPort failed", err);
+      showError("Failed to connect: " + err.message);
+    }
   }
 
   // --- Tab switching ---
@@ -66,9 +72,16 @@
   var refreshBtn = document.getElementById("bbf-refresh");
 
   function scanAll() {
-    if (!port) connectPort();
-    setLoading(true);
-    port.postMessage({ type: "scan", panel: "all" });
+    try {
+      if (!port) connectPort();
+      if (!port) return;
+      setLoading(true);
+      port.postMessage({ type: "scan", panel: "all" });
+    } catch (err) {
+      console.error("Breakfast Bar: scanAll failed", err);
+      showError("Scan failed: " + err.message);
+      setLoading(false);
+    }
   }
 
   refreshBtn.addEventListener("click", scanAll);
@@ -83,6 +96,11 @@
 
     if (msg.type === "scan-result") {
       var data = msg.data;
+      var sourceInfo = {
+        source: data._source || "unknown",
+        reason: data._reason || null,
+        markerCount: data._markerCount || 0
+      };
 
       if (data.blocks !== undefined) {
         window.BBF.renderers.blocks.render(
@@ -93,13 +111,15 @@
       if (data.handles !== undefined) {
         window.BBF.renderers.handles.render(
           document.getElementById("panel-handles"),
-          data.handles
+          data.handles,
+          sourceInfo
         );
       }
       if (data.request !== undefined) {
         window.BBF.renderers.request.render(
           document.getElementById("panel-request"),
-          data.request
+          data.request,
+          sourceInfo
         );
       }
       if (data.lumajs !== undefined) {
@@ -149,11 +169,19 @@
     return currentHighlightedBlock;
   };
 
+  // --- Panel shown callback (called from devtools.js) ---
+  window.BBF.onPanelShown = function () {
+    if (!hasScanned) {
+      hasScanned = true;
+      scanAll();
+    }
+  };
+
   // --- Navigation detection ---
-  if (browser.devtools.network && browser.devtools.network.onNavigated) {
+  if (browser.devtools && browser.devtools.network && browser.devtools.network.onNavigated) {
     browser.devtools.network.onNavigated.addListener(function () {
       currentHighlightedBlock = null;
-      // Auto-rescan after navigation, with small delay for page to settle
+      hasScanned = false;
       setTimeout(scanAll, 500);
     });
   }
@@ -163,7 +191,9 @@
   window.BBF.clearContainer = clearContainer;
 
   // --- Init ---
-  connectPort();
-  // Auto-scan on open
-  setTimeout(scanAll, 300);
+  // Defer initial scan — let the panel fully render first
+  setTimeout(function () {
+    connectPort();
+    scanAll();
+  }, 500);
 })();

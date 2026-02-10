@@ -11,11 +11,18 @@
     return node;
   }
 
-  function render(container, data) {
+  function render(container, data, sourceInfo) {
     var fragment = document.createDocumentFragment();
 
     if (!data || !data.length) {
-      fragment.appendChild(el("div", "bbf__empty", "No layout handles found."));
+      var msg = "No layout handles found.";
+      if (sourceInfo && sourceInfo.source !== "json-blob") {
+        msg = "No handle data available. Data source: " + sourceInfo.source;
+        if (sourceInfo.reason) msg += " (" + sourceInfo.reason + ")";
+        msg += ". The #breakfastbar-data JSON blob was not found on the page.";
+        msg += " Ensure the DataInjector is deployed and Magento cache is flushed.";
+      }
+      fragment.appendChild(el("div", "bbf__empty", msg));
       container.textContent = "";
       container.appendChild(fragment);
       return;

@@ -11,6 +11,16 @@
     return node;
   }
 
+  function countNodes(nodes) {
+    if (!nodes || typeof nodes !== "object") return 0;
+    var keys = Object.keys(nodes);
+    var count = keys.length;
+    for (var i = 0; i < keys.length; i++) {
+      if (nodes[keys[i]].children) count += countNodes(nodes[keys[i]].children);
+    }
+    return count;
+  }
+
   function truncate(str, len) {
     if (!str) return "";
     if (str.length <= len) return str;
@@ -152,6 +162,18 @@
     }
 
     // Full tree data from DataInjector
+    var topKeys = Object.keys(data);
+    var totalCount = countNodes(data);
+    console.log("[BBF Blocks] Top-level keys:", topKeys);
+    console.log("[BBF Blocks] Total node count:", totalCount);
+
+    // Debug: show counts
+    var debugInfo = el("div", "bbf__debug",
+      "Top-level: " + topKeys.join(", ") + " | Total nodes: " + totalCount
+    );
+    debugInfo.style.cssText = "padding: 4px 8px; font-size: 11px; color: #8b949e; border-bottom: 1px solid #333;";
+    fragment.appendChild(debugInfo);
+
     var searchInput = buildSearchBar("blocks");
     fragment.appendChild(searchInput.parentNode);
 
@@ -164,7 +186,12 @@
   }
 
   function bindEvents(container) {
-    container.addEventListener("click", function (e) {
+    // Remove previous listener to avoid duplicates on re-render
+    if (container._bbfClickHandler) {
+      container.removeEventListener("click", container._bbfClickHandler);
+    }
+
+    container._bbfClickHandler = function (e) {
       var target = e.target;
 
       // Toggle expand/collapse
@@ -206,19 +233,50 @@
         e.stopPropagation();
         return;
       }
-    });
+    };
 
-    // Search filter
+    container.addEventListener("click", container._bbfClickHandler);
+
+    // Search filter (listener is on the new input element, so no duplicate risk)
     var searchInput = container.querySelector("[data-filter='blocks']");
     if (searchInput) {
       searchInput.addEventListener("input", function () {
         var query = this.value.toLowerCase();
         var items = container.querySelectorAll(".bbf-tree__item");
+
+        if (!query) {
+          // No query: show everything, collapse children back
+          for (var i = 0; i < items.length; i++) {
+            items[i].style.display = "";
+          }
+          return;
+        }
+
+        // First pass: hide all items
         for (var i = 0; i < items.length; i++) {
-          var nameEl = items[i].querySelector(".bbf-tree__name");
+          items[i].style.display = "none";
+        }
+
+        // Second pass: show items whose own name matches,
+        // plus all their ancestors so the tree path is visible
+        for (var i = 0; i < items.length; i++) {
+          // Check only this item's direct name (first child row's name span)
+          var row = items[i].querySelector(":scope > .bbf-tree__row");
+          if (!row) continue;
+          var nameEl = row.querySelector(".bbf-tree__name");
           if (!nameEl) continue;
           var text = nameEl.textContent.toLowerCase();
-          items[i].style.display = (!query || text.indexOf(query) !== -1) ? "" : "none";
+
+          if (text.indexOf(query) !== -1) {
+            // Show this item and all ancestors
+            var node = items[i];
+            while (node) {
+              if (node.classList && node.classList.contains("bbf-tree__item")) {
+                node.style.display = "";
+              }
+              node = node.parentElement;
+            }
+          }
         }
       });
     }

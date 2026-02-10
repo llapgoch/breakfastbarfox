@@ -155,10 +155,46 @@
     return data;
   }
 
-  // Listen for scan requests from content script
+  // --- Block highlighting via existing toolbar widget ---
+  function handleHighlight(data) {
+    var $ = window.llapgochjQueryLoader && window.llapgochjQueryLoader.$;
+    if (!$) {
+      postHighlightResult(false, "jQuery not available");
+      return;
+    }
+
+    var $widget = $(".js-breakfastbar-block-widget");
+    if (!$widget.length || !$widget.data("llapgochBreakfastbarblockviewer")) {
+      postHighlightResult(false, "Block viewer widget not found");
+      return;
+    }
+
+    if (data.action === "show" && data.blockName) {
+      var result = $widget.breakfastbarblockviewer("showOverlayForBlock", data.blockName);
+      postHighlightResult(!!result);
+    } else if (data.action === "hide") {
+      $widget.breakfastbarblockviewer("hideBlockOverlay");
+      postHighlightResult(true);
+    }
+  }
+
+  function postHighlightResult(success, error) {
+    window.postMessage({
+      type: "bbf-highlight-result",
+      success: success,
+      error: error || null
+    }, "*");
+  }
+
+  // Listen for messages from content script
   window.addEventListener("message", function (event) {
     if (event.source !== window) return;
-    if (!event.data || event.data.type !== "bbf-page-scan-request") return;
-    scan();
+    if (!event.data) return;
+
+    if (event.data.type === "bbf-page-scan-request") {
+      scan();
+    } else if (event.data.type === "bbf-highlight-request") {
+      handleHighlight(event.data);
+    }
   });
 })();
