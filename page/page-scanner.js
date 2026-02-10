@@ -170,7 +170,40 @@
     }
 
     if (data.action === "show" && data.blockName) {
-      var result = $widget.breakfastbarblockviewer("showOverlayForBlock", data.blockName);
+      var instance = $widget.data("llapgochBreakfastbarblockviewer");
+
+      // Clean up previous highlight state without triggering a fade-out animation.
+      $("body").stop(true, false);                   // kill queued scroll animation
+      instance._off(instance.window, "resize");       // remove accumulated resize handlers
+      if (instance._blockTimeout) {
+        window.clearTimeout(instance._blockTimeout);
+        instance._blockTimeout = null;
+      }
+
+      // Ensure the overlay is visible and animation-free before the call.
+      // The toolbar never hides the overlay between block switches, so
+      // _show() inside showOverlayForBlock is always a no-op for it.
+      // We replicate that: stop any running jQuery animation and force
+      // the overlay visible, so _show() won't run a full fade animation
+      // (which saves/restores old CSS properties including position).
+      if (instance.overlay) {
+        instance.overlay.stop(true, false).css("opacity", "").show();
+      }
+
+      // Temporarily replace showBlockOverlay so that _show() (with its
+      // {effect:"fade", duration:250}) never runs. The overlay is already
+      // visible above, and the CSS transition on .devbar__overlay handles
+      // the smooth position animation — we don't need jQuery's fade.
+      var origShowBlock = instance.showBlockOverlay;
+      instance.showBlockOverlay = function () {
+        // no-op: overlay is already visible
+      };
+
+      var result = instance.showOverlayForBlock(data.blockName);
+
+      // Restore the original method immediately
+      instance.showBlockOverlay = origShowBlock;
+
       postHighlightResult(!!result);
     } else if (data.action === "hide") {
       $widget.breakfastbarblockviewer("hideBlockOverlay");

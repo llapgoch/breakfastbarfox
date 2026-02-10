@@ -154,6 +154,7 @@
   window.BBF.highlightBlock = function (blockName) {
     if (!port) connectPort();
 
+    // Toggle off if clicking the same block
     if (currentHighlightedBlock === blockName) {
       port.postMessage({ type: "highlight", action: "hide" });
       currentHighlightedBlock = null;
