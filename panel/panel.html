@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <div class="bbf">
+    <div class="bbf__toolbar">
+      <div class="bbf__tabs">
+        <button class="bbf__tab is-active" data-panel="blocks">Blocks</button>
+        <button class="bbf__tab" data-panel="handles">Handles</button>
+        <button class="bbf__tab" data-panel="request">Request</button>
+        <button class="bbf__tab" data-panel="lumajs">Luma JS</button>
+        <button class="bbf__tab" data-panel="alpine">Alpine</button>
+      </div>
+      <div class="bbf__actions">
+        <button class="bbf__refresh" id="bbf-refresh" title="Rescan page">&#x21bb; Scan</button>
+      </div>
+    </div>
+
+    <div class="bbf__panels">
+      <div class="bbf__panel is-active" id="panel-blocks">
+        <div class="bbf__empty">Click "Scan" to load block data.</div>
+      </div>
+      <div class="bbf__panel" id="panel-handles">
+        <div class="bbf__empty">Click "Scan" to load handle data.</div>
+      </div>
+      <div class="bbf__panel" id="panel-request">
+        <div class="bbf__empty">Click "Scan" to load request data.</div>
+      </div>
+      <div class="bbf__panel" id="panel-lumajs">
+        <div class="bbf__empty">Click "Scan" to load Luma JS data.</div>
+      </div>
+      <div class="bbf__panel" id="panel-alpine">
+        <div class="bbf__empty">Click "Scan" to load Alpine data.</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="renderers/blocks.js"></script>
+  <script src="renderers/handles.js"></script>
+  <script src="renderers/request.js"></script>
+  <script src="renderers/lumajs.js"></script>
+  <script src="renderers/alpine.js"></script>
+  <script src="panel.js"></script>
+</body>
+</html>

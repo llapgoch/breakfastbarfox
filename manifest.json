@@ -1,0 +1,30 @@
+{
+  "manifest_version": 2,
+  "name": "Breakfast Bar Fox",
+  "version": "1.0.0",
+  "description": "Magento 2 developer toolbar in Firefox DevTools",
+  "devtools_page": "devtools/devtools.html",
+  "background": {
+    "scripts": ["background/background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/content-script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    "page/page-scanner.js"
+  ],
+  "icons": {
+    "16": "icons/icon-16.svg",
+    "32": "icons/icon-32.svg",
+    "48": "icons/icon-48.svg",
+    "96": "icons/icon-96.svg"
+  },
+  "permissions": [
+    "activeTab",
+    "tabs"
+  ]
+}
