@@ -20,30 +20,47 @@ Firefox release/beta only install **signed** extensions. We sign on the *unliste
 channel — Mozilla signs the package but doesn't list it publicly, so it installs
 permanently in any Firefox without going through review.
 
-**Prerequisites:** Node 20+ (`node@22` via Homebrew works) and a Mozilla account.
+**Prerequisites:** Node 20+ and a free Mozilla add-on developer account.
 
-1. Install tooling once:
+1. **Use the right Node version.** `web-ext` needs Node 20+; older versions fail
+   with `diagChan.tracingChannel is not a function`. The repo pins it via `.nvmrc`:
    ```
-   npm install
+   nvm use      # switches to Node 20
+   npm install  # first time only
    ```
-2. Get API credentials from <https://addons.mozilla.org/developers/addon/api/key/>,
-   then copy `.env.example` to `.env` and fill in `WEB_EXT_API_KEY` / `WEB_EXT_API_SECRET`.
-3. Lint, then sign:
+2. **Add your signing credentials.** Generate an API key + secret at
+   <https://addons.mozilla.org/developers/addon/api/key/>, then copy
+   `.env.example` to `.env` and fill in `WEB_EXT_API_KEY` / `WEB_EXT_API_SECRET`.
+   `.env` is gitignored — keep it that way.
+3. **Lint and sign:**
    ```
    npm run lint
-   set -a; source .env; set +a   # load credentials into the environment
    npm run sign
    ```
-4. web-ext downloads the signed `.xpi` into `web-ext-artifacts/`.
-5. Install it: drag the `.xpi` onto a Firefox window, or open `about:addons` →
+   The `sign` script sources `.env` itself, so the credentials don't need to be
+   exported manually. `web-ext` validates, signs, and downloads the result.
+4. The signed `.xpi` lands in `web-ext-artifacts/` (e.g. `<hash>-1.0.1.xpi`).
+5. **Install it:** drag the `.xpi` onto a Firefox window, or open `about:addons` →
    gear menu → **Install Add-on From File…** and pick the `.xpi`.
 
-Bump `version` in `manifest.json` before each new signed build — Mozilla rejects a
-re-upload of an already-signed version.
+> ⚠️ **Bump `version` in `manifest.json` before every sign.** Mozilla permanently
+> consumes a version number once it's signed and rejects a re-upload of the same
+> one. New release → new version.
 
-> **Icons:** the PNGs in `icons/` are generated from `icon.svg` with
-> `rsvg-convert -w <size> -h <size> icon.svg -o icon-<size>.png`. Regenerate them
-> if the SVG changes.
+#### Manifest requirements for signing
+
+These are already set in `manifest.json`; note them if you fork or rename:
+
+- `browser_specific_settings.gecko.id` — a permanent add-on ID
+  (`breakfastbarfox@llapgoch.dev`). Signing won't work without it.
+- `data_collection_permissions: ["none"]` — declares the extension collects no
+  data (now required by Mozilla).
+- `strict_min_version: "142.0"` — the data-collection key needs Firefox 142+
+  (specifically Firefox for Android 142). Don't lower this without removing that key.
+- Icons are PNG, not SVG (AMO prefers raster). Regenerate from `icon.svg` with:
+  ```
+  for s in 16 32 48 96 128; do rsvg-convert -w $s -h $s icons/icon.svg -o icons/icon-$s.png; done
+  ```
 
 ## Install the Magento module changes
 
