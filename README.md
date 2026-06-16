@@ -4,13 +4,46 @@ A Firefox DevTools extension companion for the [Llapgoch Breakfast Bar](https://
 
 ## Install the extension
 
+### Quick try (temporary)
+
 1. Open Firefox and navigate to `about:debugging`
 2. Click **"This Firefox"** in the left sidebar
 3. Click **"Load Temporary Add-on..."**
 4. Browse to this directory and select `manifest.json`
 5. Open DevTools (F12) on any page — a **"Breakfast Bar"** tab will appear
 
-> **Note:** Temporary add-ons are removed when Firefox closes. For persistent installation, the extension would need to be signed via [addons.mozilla.org](https://addons.mozilla.org).
+> Temporary add-ons are removed when Firefox closes. For a persistent install, sign it (below).
+
+### Persistent install (self-distributed signed `.xpi`)
+
+Firefox release/beta only install **signed** extensions. We sign on the *unlisted*
+channel — Mozilla signs the package but doesn't list it publicly, so it installs
+permanently in any Firefox without going through review.
+
+**Prerequisites:** Node 20+ (`node@22` via Homebrew works) and a Mozilla account.
+
+1. Install tooling once:
+   ```
+   npm install
+   ```
+2. Get API credentials from <https://addons.mozilla.org/developers/addon/api/key/>,
+   then copy `.env.example` to `.env` and fill in `WEB_EXT_API_KEY` / `WEB_EXT_API_SECRET`.
+3. Lint, then sign:
+   ```
+   npm run lint
+   set -a; source .env; set +a   # load credentials into the environment
+   npm run sign
+   ```
+4. web-ext downloads the signed `.xpi` into `web-ext-artifacts/`.
+5. Install it: drag the `.xpi` onto a Firefox window, or open `about:addons` →
+   gear menu → **Install Add-on From File…** and pick the `.xpi`.
+
+Bump `version` in `manifest.json` before each new signed build — Mozilla rejects a
+re-upload of an already-signed version.
+
+> **Icons:** the PNGs in `icons/` are generated from `icon.svg` with
+> `rsvg-convert -w <size> -h <size> icon.svg -o icon-<size>.png`. Regenerate them
+> if the SVG changes.
 
 ## Install the Magento module changes
 
